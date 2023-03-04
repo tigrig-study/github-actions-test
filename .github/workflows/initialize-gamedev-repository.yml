@@ -1,0 +1,16 @@
+name: 'Initialize game development repository'
+
+on: workflow_dispatch
+
+jobs:
+  initialize-gamedev-repository:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Create game-dev branch
+        run: |
+          git switch -c game-dev
+          git push -u origin game-dev
