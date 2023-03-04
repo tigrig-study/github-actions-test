@@ -1,0 +1,30 @@
+name: 'YouthSignal ゲーム開発リポジトリ初期化'
+
+on: workflow_dispatch
+
+jobs:
+  initialize-gamedev-repository:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 1
+
+    steps:
+      - run: cat $GITHUB_EVENT_PATH
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Update README.md
+        run: |
+          echo -e "# ${repo_name#${repo_owner}/}" > README.md
+        env:
+          repo_name: ${{ github.repository }}
+          repo_owner: ${{ github.repository_owner }}
+
+      - name: Commit & Push
+        run: |
+          git config user.name actions-user[bot]
+          git config user.email action@github.com
+          git add .
+          git commit -m 'YouthSignal ゲーム開発リポジトリ初期化'
+          git push
