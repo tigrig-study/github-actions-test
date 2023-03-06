@@ -10,7 +10,8 @@ on:
         description: 'リポジトリの説明文'
 
 jobs:
-  create-gamedev-repository:
+  # エンジンリポジトリのフォーク（ゲーム開発リポジトリの作成）
+  fork-engine-repository:
     runs-on: ubuntu-latest
 
     timeout-minutes: 1
@@ -21,6 +22,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # GitHub Apps による認証トークンの発行
       - name: Generate token
         id: generate_token
         uses: tibdex/github-app-token@v1
@@ -28,7 +30,7 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      # エンジンリポジトリのフォーク（ゲーム開発リポジトリの作成）
+      # エンジンリポジトリのフォーク
       # - リポジトリ名: ワークフロー実行時に指定された『リポジトリ名』
       # - デフォルトブランチのみ: 有効
       - name: Fork repository
@@ -44,9 +46,25 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
-      # 上記フォークで生成されたゲーム開発リポジトリの設定変更
-      # - 説明文: ワークフロー実行時に指定された『リポジトリの説明文』
-      # - プライベート: 有効
+  # ゲーム開発リポジトリの初期化
+  initialize-gamedev-repository:
+    needs: fork-engine-repository
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 1
+
+    steps:
+      - run: cat $GITHUB_EVENT_PATH
+
+      # GitHub Apps による認証トークンの発行
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      # ゲーム開発リポジトリの description を更新
       - name: Update repository description
         run: |
           gh api \
@@ -54,7 +72,41 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             /repos/${{ github.repository_owner }}/${{ inputs.repository_name }} \
-            -f description='${{ inputs.repository_description }}' \
-            -F private=true
+            -f description='${{ inputs.repository_description }}'
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+      # ゲーム開発リポジトリの write 権限付与
+      # - 付与対象: vars.EMPOWERED_TEAM_NAME に定義されている team
+      - name: Add team repository permissions
+        run: |
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            orgs/${{ github.repository_owner }}/teams/${{ vars.EMPOWERED_TEAM_NAME }}/repos/${{ github.repository_owner }}/${{ inputs.repository_name }} \
+            -f permission='push'
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+      # ゲーム開発リポジトリをチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository_owner }}/${{ inputs.repository_name }}
+          token: ${{ steps.generate_token.outputs.token }}
+          fetch-depth: 1
+
+      # README.md の内容を リポジトリ名 + 説明文 に上書き
+      - name: Update README.md
+        run: |
+          echo -e "# ${{ inputs.repository_name }}\n\n${{ inputs.repository_description }}" > README.md
+
+      - name: Commit and Push Changes
+        uses: EndBug/add-and-commit@v9.1.1
+        with:
+          add: './README.md'
+          author_name: actions-user[bot]
+          author_email: action@github.com
+          message: 'Initialize README.md'
+          push: 'true'
