@@ -30,6 +30,13 @@ jobs:
           git commit -m 'YouthSignal ゲーム開発リポジトリ初期化'
           git push
 
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Add team repository permissions
         run: |
           gh api \
@@ -39,6 +46,6 @@ jobs:
             orgs/${{ env.REPO_OWNER }}/teams/${{ env.TEAM_NAME }}/repos/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }} \
             -f permission='push'
         env:
-          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
           REPO_OWNER: ${{ github.repository_owner }}
-          TEAM_NAME: test
+          TEAM_NAME: script-directors
