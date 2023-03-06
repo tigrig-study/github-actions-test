@@ -1,0 +1,60 @@
+name: 'YouthSignal ゲーム開発リポジトリ作成'
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository_name:
+        description: 'リポジトリ名'
+        required: true
+      repository_description:
+        description: 'リポジトリの説明文'
+
+jobs:
+  create-gamedev-repository:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 1
+
+    steps:
+      - run: cat $GITHUB_EVENT_PATH
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      # エンジンリポジトリのフォーク（ゲーム開発リポジトリの作成）
+      # - リポジトリ名: ワークフロー実行時に指定された『リポジトリ名』
+      # - デフォルトブランチのみ: 有効
+      - name: Fork repository
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository }}/forks \
+            -f organization='${{ github.repository_owner }}' \
+            -f name='${{ inputs.repository_name }}' \
+            -F default_branch_only=true
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+      # 上記フォークで生成されたゲーム開発リポジトリの設定変更
+      # - 説明文: ワークフロー実行時に指定された『リポジトリの説明文』
+      # - プライベート: 有効
+      - name: Update repository description
+        run: |
+          gh api \
+            --method PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            /repos/${{ github.repository_owner }}/${{ inputs.repository_name }} \
+            -f description='${{ inputs.repository_description }}' \
+            -F private=true
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
