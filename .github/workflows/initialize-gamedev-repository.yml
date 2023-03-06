@@ -29,3 +29,16 @@ jobs:
           git add .
           git commit -m 'YouthSignal ゲーム開発リポジトリ初期化'
           git push
+
+      - name: Add team repository permissions
+        run: |
+          gh api \
+            --method PUT \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            orgs/${{ env.REPO_OWNER }}/teams/${{ env.TEAM_NAME }}/repos/${{ env.REPO_OWNER }}/${{ env.REPO_NAME }} \
+            -f permission='push'
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          TEAM_NAME: test
