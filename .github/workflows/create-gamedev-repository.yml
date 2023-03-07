@@ -71,12 +71,8 @@ jobs:
       # ゲーム開発リポジトリの description を更新
       - name: Update repository description
         run: |
-          gh api \
-            --method PATCH \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository_owner }}/${{ inputs.repository_name }} \
-            -f description='${{ inputs.repository_description }}'
+          gh repo edit ${{ github.repository_owner }}/${{ inputs.repository_name }} \
+            --description='${{ inputs.repository_description }}'
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
