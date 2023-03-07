@@ -1,0 +1,33 @@
+name: 'Fork Test'
+
+on:
+  workflow_dispatch:
+jobs:
+  fork-repository:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 1
+
+    steps:
+      - run: cat $GITHUB_EVENT_PATH
+
+      # GitHub Apps による認証トークンの発行
+      - name: Generate token
+        id: generate_token
+        uses: tibdex/github-app-token@v1
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Fork repository
+        uses: actions/github-script@v6.4.0
+        with:
+          github-token: ${{ steps.generate_token.outputs.token }}
+          script: |
+            const { data } = await github.rest.repos.createFork({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              organization: 'tigrig-study',
+              name: 'testtest'
+            });
+            console.log(`Forked repository ${data.full_name}`);
