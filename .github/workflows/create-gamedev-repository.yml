@@ -1,22 +1,49 @@
 name: 'YouthSignal ゲーム開発リポジトリ作成'
 
+# このワークフローは、 ゲーム開発リポジトリ（ youthsignal-volume-? ）を生成するためのものです。
+
+# 実行には、予め以下の作業をしておく必要があります。
+# - GitHub Apps による認証トークン取得（以下設定すべき Permission ）
+#   - Repository
+#     - Administration: Read and write
+#     - Contents: Read and write
+#   - Organization
+#     - Members: Read and write
+# - リポジトリの Secrets に上記 GitHub Apps の ID と PRIVATE_KEY を定義 → APP_ID, APP_PRIVATE_KEY
+# - リポジトリの Variables に、ゲーム開発用リポジトリの編集権限を与える team の名前を定義 → EMPOWERED_TEAM_NAME
+
+# 具体的には以下のような処理を行っています。
+# - エンジンリポジトリを Fork → ゲーム開発用リポジトリとする
+# - Variables の EMPOWERED_TEAM_NAME に定義されている team に対して、ゲーム開発用リポジトリの write 権限を与える
+# - ゲーム開発用リポジトリの説明文に、本ワークフローの手動実行入力値 repository_description を設定
+# - ゲーム開発用リポジトリの README.md を、本ワークフローの手動実行入力値 repository_name + repository_description で上書き
+
+# ※将来的な改善点
+# - スクリプトの分割 → 可読性向上
+# - エラー処理の実装 → 何らかのエラーが発生した場合、ワークフローが正しく停止するようにする
+# - APIバージョンの指定 → 複数箇所で API バージョンを指定しているため一元化、および常に最新の API バージョンを使用使用できるようにする
+
 on:
+  # 手動実行トリガー
   workflow_dispatch:
     inputs:
       repository_name:
-        description: 'リポジトリ名'
+        description: 'リポジトリ名（例: youthsignal-volume-24）'
         required: true
       repository_description:
-        description: 'リポジトリの説明文'
+        description: 'リポジトリの説明文（例: YouthSignal Volume24 - 第二章 Part14）'
 
 jobs:
+  # ゲーム開発用リポジトリの作成
   create-gamedev-repository:
     runs-on: ubuntu-latest
 
-    timeout-minutes: 1
+    timeout-minutes: 3
 
     steps:
-      - run: cat $GITHUB_EVENT_PATH
+      # デバッグ用: イベントの内容を表示する
+      - name: Debug event payload
+        run: cat $GITHUB_EVENT_PATH
 
       # GitHub Apps による認証トークンの発行
       - name: Generate token
@@ -37,6 +64,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               organization: context.repo.owner,
+              default_branch_only: true,
               name: '${{ inputs.repository_name }}'
             });
 
@@ -76,7 +104,6 @@ jobs:
       - name: Update README.md
         run: |
           echo -e "# ${{ inputs.repository_name }}\n\n${{ inputs.repository_description }}" > README.md
-
       - name: Commit and Push Changes
         uses: EndBug/add-and-commit@v9.1.1
         with:
