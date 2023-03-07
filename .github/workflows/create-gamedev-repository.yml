@@ -93,22 +93,28 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
-      # ゲーム開発リポジトリをチェックアウト
-      - name: Checkout gamedev repository
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ github.repository_owner }}/${{ inputs.repository_name }}
-          token: ${{ steps.generate_token.outputs.token }}
+      # ゲーム開発リポジトリをクローン
+      - name: Clone GameDev Repository
+        run: |
+          # --sparse --filter=blob:none オプションをつけてクローンを軽量化
+          gh repo clone ${{ github.repository_owner }}/${{ inputs.repository_name }} gamedev-repo -- --sparse --filter=blob:none
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
       # README.md の内容を リポジトリ名 + 説明文 に上書き
       - name: Update README.md
         run: |
           echo -e "# ${{ inputs.repository_name }}\n\n${{ inputs.repository_description }}" > README.md
-      - name: Commit and Push Changes
-        uses: EndBug/add-and-commit@v9.1.1
-        with:
-          add: './README.md'
-          author_name: actions-user[bot]
-          author_email: action@github.com
-          message: 'Initialize README.md'
-          push: 'true'
+        working-directory: ./gamedev-repo
+      - name: Commit & Push
+        run: |
+          # 下記を実行しないと、 `fatal: could not read Username for 'https://github.com': No such device or address` が発生する
+          git config url."https://x-oauth-basic:$GH_TOKEN@github.com/".insteadOf "https://github.com/"
+          git config user.name actions-user[bot]
+          git config user.email action@github.com
+          git add .
+          git commit -m 'Initialize README.md'
+          git push
+        working-directory: ./gamedev-repo
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
