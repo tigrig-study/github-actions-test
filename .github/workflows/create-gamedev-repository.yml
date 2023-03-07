@@ -10,17 +10,13 @@ on:
         description: 'リポジトリの説明文'
 
 jobs:
-  # エンジンリポジトリのフォーク（ゲーム開発リポジトリの作成）
-  fork-engine-repository:
+  create-gamedev-repository:
     runs-on: ubuntu-latest
 
     timeout-minutes: 1
 
     steps:
       - run: cat $GITHUB_EVENT_PATH
-
-      - name: Checkout code
-        uses: actions/checkout@v3
 
       # GitHub Apps による認証トークンの発行
       - name: Generate token
@@ -30,39 +26,19 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      # エンジンリポジトリのフォーク
-      # - リポジトリ名: ワークフロー実行時に指定された『リポジトリ名』
-      # - デフォルトブランチのみ: 有効
+      # エンジンリポジトリをフォーク（ワークフロー実行時に指定された『リポジトリ名』を使用）
+      # ※ gh api でフォークすると、フォーク完了を待たずに次の処理が走ってしまうため、 await 出来る actions/github-script を使っている
       - name: Fork repository
-        run: |
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            /repos/${{ github.repository }}/forks \
-            -f organization='${{ github.repository_owner }}' \
-            -f name='${{ inputs.repository_name }}' \
-            -F default_branch_only=true
-        env:
-          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
-
-  # ゲーム開発リポジトリの初期化
-  initialize-gamedev-repository:
-    needs: fork-engine-repository
-    runs-on: ubuntu-latest
-
-    timeout-minutes: 1
-
-    steps:
-      - run: cat $GITHUB_EVENT_PATH
-
-      # GitHub Apps による認証トークンの発行
-      - name: Generate token
-        id: generate_token
-        uses: tibdex/github-app-token@v1
+        uses: actions/github-script@v6.4.0
         with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          github-token: ${{ steps.generate_token.outputs.token }}
+          script: |
+            const { data } = await github.rest.repos.createFork({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              organization: context.repo.owner,
+              name: '${{ inputs.repository_name }}'
+            });
 
       # ゲーム開発リポジトリの description を更新
       - name: Update repository description
@@ -90,12 +66,11 @@ jobs:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
       # ゲーム開発リポジトリをチェックアウト
-      - name: Checkout code
+      - name: Checkout gamedev repository
         uses: actions/checkout@v3
         with:
           repository: ${{ github.repository_owner }}/${{ inputs.repository_name }}
           token: ${{ steps.generate_token.outputs.token }}
-          fetch-depth: 1
 
       # README.md の内容を リポジトリ名 + 説明文 に上書き
       - name: Update README.md
