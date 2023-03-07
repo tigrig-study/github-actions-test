@@ -97,6 +97,29 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
+      # プッシュできるように各種 git 設定を行う
+      - name: Setup git config
+        run: |
+          # 下記を実行しないと、 `fatal: could not read Username for 'https://github.com': No such device or address` が発生する
+          git config url."https://x-oauth-basic:$GH_TOKEN@github.com/".insteadOf "https://github.com/"
+          # コミットログに記録されるユーザーの設定
+          git config user.name actions-user[bot]
+          git config user.email action@github.com
+        working-directory: ./gamedev-repo
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+      # `dev` ブランチを作成し、デフォルトブランチに設定
+      - name: Create dev branch and set to default branch
+        run: |
+          git switch -c $DEFAULT_BRANCH_NAME
+          git push -u origin $DEFAULT_BRANCH_NAME
+          gh repo edit ${{ github.repository_owner }}/${{ inputs.repository_name }} --default-branch=$DEFAULT_BRANCH_NAME
+        working-directory: ./gamedev-repo
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          DEFAULT_BRANCH_NAME: dev
+
       # README.md の内容を リポジトリ名 + 説明文 に上書き
       - name: Update README.md
         run: |
@@ -104,13 +127,7 @@ jobs:
         working-directory: ./gamedev-repo
       - name: Commit & Push
         run: |
-          # 下記を実行しないと、 `fatal: could not read Username for 'https://github.com': No such device or address` が発生する
-          git config url."https://x-oauth-basic:$GH_TOKEN@github.com/".insteadOf "https://github.com/"
-          git config user.name actions-user[bot]
-          git config user.email action@github.com
           git add .
           git commit -m 'Initialize README.md'
           git push
         working-directory: ./gamedev-repo
-        env:
-          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
