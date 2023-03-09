@@ -1,16 +1,20 @@
-name: Hello
-description: 元気に挨拶してくれるアクション
+name: 'Hello World'
+description: 'Greet someone'
 inputs:
-  target:
-    description: 誰に挨拶するか
+  who-to-greet:
+    description: 'Who to greet'
+    required: true
 outputs:
-  target:
-    value: ${{ inputs.target }}
-    description: 挨拶した相手
+  hello-text:
+    description: 'Random number'
+    value: ${{ steps.hello-text-generator.outputs.hello-text }}
 runs:
-  using: composite
+  using: 'composite'
   steps:
-    - run: sh $GITHUB_ACTION_PATH/script.sh $TARGET
+    - id: hello-text-generator
+      run: echo "hello-text=Hello,${{ inputs.who-to-greet }}" >> $GITHUB_OUTPUT
       shell: bash
-      env:
-        TARGET: ${{ inputs.target }}
+    - run: echo ${{ steps.hello-text-generator.outputs.hello-text }}
+      shell: bash
+    - run: sh ${{ github.action_path }}/goodbye.sh ${{ inputs.who-to-greet }}
+      shell: bash
